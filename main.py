@@ -119,3 +119,9 @@ for epoch in range(epochs):
 print("\nSaídas finais dos nós (após treinamento):")
 for i, y in enumerate(Y_hat):
     print(f"Nó {chr(65 + i)}: saída = {y[0]:.4f} | alvo = {Y_target[i][0]}")
+
+# --- Pesos finais ---
+print("\nPesos finais da rede:")
+print(f"W1:\n{W1}\n")
+print(f"W2:\n{W2}\n")
+print(f"W3:\n{W3}")
