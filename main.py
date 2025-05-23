@@ -41,7 +41,7 @@ H0 = np.array([
 
 # --- Rótulos verdadeiros para cada nó (0 ou 1) ---
 Y_target = np.array([
-    [1.0],  # A
+    [0.0],  # A
     [0.0],  # B
     [1.0],  # C
     [0.0]   # D
