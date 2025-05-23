@@ -24,7 +24,7 @@ A = np.array([
     [1, 1, 1, 0],  # conexões do nó A
     [1, 1, 0, 1],  # conexões do nó B
     [1, 0, 1, 0],  # conexões do nó C
-    [0, 1, 0, 1]
+    [0, 1, 0, 1]   # conexões do nó D
 ], dtype=float)
 
 # --- Normalização da adjacência (A_hat = D^{-1/2} * A * D^{-1/2}) ---
@@ -77,17 +77,17 @@ for epoch in range(epochs):
 
     # --- CÁLCULO DA PERDA (Loss) ---
 
-    # Usamos MSE (Mean Squared Error): média do erro quadrático de todos os nós
-    loss = np.mean((Y_hat - Y_target) ** 2)
+    # Usamos Binary Cross-Entropy (BCE)
+    loss = -np.mean(Y_target * np.log(Y_hat + 1e-10) + (1 - Y_target) * np.log(1 - Y_hat + 1e-10))
 
     # --- BACKPROPAGATION ---
 
-    # Derivada da loss em relação à saída (Y_hat)
-    dL_dYhat = 2 * (Y_hat - Y_target) / Y_hat.size  # shape: (4, 1)
+   # Derivada da loss em relação à saída (Y_hat) - CORREÇÃO PARA BCE:
+    dL_dYhat = - (Y_target / (Y_hat + 1e-10) - (1 - Y_target) / (1 - Y_hat + 1e-10)) / Y_target.size
 
-    # Derivada da saída em relação à pré-ativação Z3
-    dYhat_dZ3 = sigmoid_deriv(Z3)                   # shape: (4, 1)
-    dL_dZ3 = dL_dYhat * dYhat_dZ3                   # gradiente total na saída
+    # Derivada da saída em relação à pré-ativação Z3 (sigmoid)
+    dYhat_dZ3 = sigmoid_deriv(Z3)
+    dL_dZ3 = dL_dYhat * dYhat_dZ3  
 
     # Gradiente dos pesos do perceptron (W3)
     dL_dW3 = H2.T @ dL_dZ3                          # shape: (2, 1)
