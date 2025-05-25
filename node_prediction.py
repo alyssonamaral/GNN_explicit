@@ -1,25 +1,19 @@
 import numpy as np
 
-# --- Funções auxiliares ---
-
 def relu(x):
-    # ReLU: ativa apenas valores positivos (zera os negativos)
     return np.maximum(0, x)
 
 def relu_deriv(x):
-    # Derivada da ReLU: 1 onde x > 0, senão 0
     return (x > 0).astype(float)
 
 def sigmoid(x):
-    # Sigmoide: função logística para saída entre 0 e 1
     return 1 / (1 + np.exp(-x))
 
 def sigmoid_deriv(x):
-    # Derivada da sigmoide: s(x) * (1 - s(x))
     s = sigmoid(x)
     return s * (1 - s)
 
-# --- Grafo (adjacência com self-loops já incluídos) ---
+# --- Grafo (adjacência com self-loops) ---
 A = np.array([
     [1, 1, 1, 0],  # conexões do nó A
     [1, 1, 0, 1],  # conexões do nó B
@@ -82,7 +76,7 @@ for epoch in range(epochs):
 
     # --- BACKPROPAGATION ---
 
-   # Derivada da loss em relação à saída (Y_hat) - CORREÇÃO PARA BCE:
+   # Derivada da loss em relação à saída (Y_hat):
     dL_dYhat = - (Y_target / (Y_hat + 1e-10) - (1 - Y_target) / (1 - Y_hat + 1e-10)) / Y_target.size
 
     # Derivada da saída em relação à pré-ativação Z3 (sigmoid)

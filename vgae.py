@@ -107,12 +107,12 @@ for epoch in range(epochs):
 
         delta_h1 = dL_dout * dout_dh1
         dW_dec1 += np.outer(z_ij, delta_h1)
-        db_dec1 += delta_h1
+        db_dec1 += delta_h1.reshape(-1)
 
         # Propagando para Z (metade para i, metade para j)
-        dz_ij = delta_h1 @ W_dec1.T  # grad wrt concat(z_i || z_j)
-        dZ[i] += dz_ij[:2]
-        dZ[j] += dz_ij[2:]
+        dz_ij = (delta_h1 @ W_dec1.T).flatten()  # Garante shape (4,)
+        dZ[i] += dz_ij[:2]  # Primeiras 2 dimensões
+        dZ[j] += dz_ij[2:]  # Últimas 2 dimensões
 
     # --- BACKPROP ENCODER (usando dZ) ---
     dZ_dmu = 1
