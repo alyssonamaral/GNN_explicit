@@ -25,7 +25,7 @@ A = np.array([
 D_inv_sqrt = np.diag(1.0 / np.sqrt(np.sum(A, axis=1)))
 A_hat = D_inv_sqrt @ A @ D_inv_sqrt
 
-# --- Features iniciais de cada nó (2 dimensões por nó) ---
+# --- Features iniciais ---
 H0 = np.array([
     [1.0, 2.0],   # nó A
     [0.5, 1.0],   # nó B
@@ -33,7 +33,7 @@ H0 = np.array([
     [2.0, 1.0]    # nó D
 ])
 
-# --- Rótulos verdadeiros para cada nó (0 ou 1) ---
+# --- Rótulos ---
 Y_target = np.array([
     [0.0],  # A
     [0.0],  # B
@@ -47,11 +47,9 @@ W1 = np.random.randn(2, 2) * 0.1  # pesos da GNN camada 1
 W2 = np.random.randn(2, 2) * 0.1  # pesos da GNN camada 2
 W3 = np.random.randn(2, 1) * 0.1  # perceptron final
 
-# --- Hiperparâmetros de treinamento ---
-lr = 0.1       # taxa de aprendizado
-epochs = 100   # número de épocas
+lr = 0.1      
+epochs = 100  
 
-# --- Loop de treinamento ---
 for epoch in range(epochs):
     # --- FORWARD PASS ---
 
@@ -69,9 +67,7 @@ for epoch in range(epochs):
     Z3 = H2 @ W3           # Produto entre features finais e pesos do MLP
     Y_hat = sigmoid(Z3)    # Probabilidades entre 0 e 1 (uma por nó)
 
-    # --- CÁLCULO DA PERDA (Loss) ---
-
-    # Usamos Binary Cross-Entropy (BCE)
+    # Binary Cross-Entropy (BCE)
     loss = -np.mean(Y_target * np.log(Y_hat + 1e-10) + (1 - Y_target) * np.log(1 - Y_hat + 1e-10))
 
     # --- BACKPROPAGATION ---
