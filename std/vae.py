@@ -12,6 +12,11 @@ Modelo (seção 17.2):
 Loss = -ELBO, estimado com UMA amostra z* (eq. 17.23):
     ELBO ≈ log Pr(x|z*,ϕ) - D_KL[ q(z|x,θ) || Pr(z) ]
 
+β-VAE (Higgins et al., 2017): pesa o KL com β -> Loss = Recon + β·KL
+    β = 1 -> VAE original (Loss = -ELBO)
+    β > 1 -> espaço latente mais próximo de Norm[0, I], reconstrução pior
+    β < 1 -> reconstrução melhor, espaço latente menos regularizado
+
     -log Pr(x|z*,ϕ) = ||x - f[z*,ϕ]||² / (2σ²) + (D_x/2)·log(2πσ²)
     D_KL            = ½ (Tr[Σ] + µᵀµ - D_z - log det[Σ])            (eq. 17.24)
 
@@ -70,6 +75,8 @@ params = {
 
 # --- Hiperparâmetros ---
 sigma2 = 0.1      # variância σ² da verossimilhança (eq. 17.6). Menor -> reconstrução pesa mais que o KL
+beta = 1.0        # peso do KL (β-VAE). Obs: multiplicar a loss por 2σ² dá ||x-x̂||² + 2σ²·β·KL,
+                  # então σ² e β controlam o mesmo equilíbrio reconstrução vs KL
 lr = 0.01
 epochs = 2000
 batch_size = 10
@@ -79,7 +86,7 @@ n_frames = 150    # quantos "retratos" do espaço latente guardar para o GIF
 
 
 # =====================================================================
-# FORWARD: calcula -ELBO para um mini-batch
+# FORWARD: calcula a loss (Recon + β·KL) para um mini-batch
 # =====================================================================
 def forward(params, Xb, eps):
     # --- ENCODER g[x,θ] -> parâmetros da q(z|x,θ) (eq. 17.20) ---
@@ -98,7 +105,7 @@ def forward(params, Xb, eps):
     h2 = relu(a2)
     x_hat = h2 @ params["W3"] + params["b3"]        # (B, D_x) saída linear (é uma média Gaussiana)
 
-    # --- LOSS = -ELBO (eq. 17.23) ---
+    # --- LOSS = Recon + β·KL  (com β = 1 é a -ELBO da eq. 17.23) ---
     # Termo 1: -log Pr(x|z*,ϕ) da Gaussiana esférica
     recon = np.sum((Xb - x_hat) ** 2, axis=1) / (2 * sigma2) \
             + 0.5 * D_x * np.log(2 * np.pi * sigma2)                     # (B,)
@@ -107,14 +114,14 @@ def forward(params, Xb, eps):
     #   Tr[Σ] = Σ exp(logvar),  µᵀµ = Σ µ²,  log det[Σ] = Σ logvar
     kl = 0.5 * np.sum(np.exp(logvar) + mu ** 2 - 1 - logvar, axis=1)    # (B,)
 
-    loss = np.mean(recon + kl)
+    loss = np.mean(recon + beta * kl)
 
     cache = (Xb, a1, h1, mu, logvar, std, eps, z, a2, h2, x_hat)
     return loss, np.mean(recon), np.mean(kl), cache
 
 
 # =====================================================================
-# BACKWARD: gradientes de -ELBO em relação a todos os parâmetros
+# BACKWARD: gradientes da loss em relação a todos os parâmetros
 # =====================================================================
 def backward(params, cache):
     Xb, a1, h1, mu, logvar, std, eps, z, a2, h2, x_hat = cache
@@ -138,11 +145,11 @@ def backward(params, cache):
     #   dz/dµ = 1
     #   dz/dlogvar = ½ exp(½ logvar)·ε = ½·std·ε
     # É AQUI que o truque funciona: ε é constante, então o gradiente passa para µ e Σ.
-    # Somamos também a derivada do KL:
-    #   dKL/dµ = µ
-    #   dKL/dlogvar = ½ (exp(logvar) - 1)
-    dL_dmu = dL_dz * 1.0 + mu / B
-    dL_dlogvar = dL_dz * 0.5 * std * eps + 0.5 * (np.exp(logvar) - 1) / B
+    # Somamos também a derivada do β·KL:
+    #   d(β·KL)/dµ = β·µ
+    #   d(β·KL)/dlogvar = β·½ (exp(logvar) - 1)
+    dL_dmu = dL_dz * 1.0 + beta * mu / B
+    dL_dlogvar = dL_dz * 0.5 * std * eps + beta * 0.5 * (np.exp(logvar) - 1) / B
 
     # --- Encoder ---
     g["W_mu"] = h1.T @ dL_dmu
@@ -216,7 +223,7 @@ for epoch in range(epochs):
     hist_kl.append(kl_ep)
 
     if (epoch + 1) % 200 == 0 or epoch == 0:
-        print(f"Epoch {epoch+1:4d} | -ELBO: {loss_ep:8.4f} | Recon: {recon_ep:8.4f} | KL: {kl_ep:.4f}")
+        print(f"Epoch {epoch+1:4d} | Loss: {loss_ep:8.4f} | Recon: {recon_ep:8.4f} | KL: {kl_ep:.4f}")
 
 
 # =====================================================================
@@ -266,7 +273,7 @@ ax.legend(frameon=False)
 ax = axes[1]
 ax.plot(hist_recon, color=cores[0], lw=2, label="Reconstrução  -log Pr(x|z)")
 ax.plot(hist_kl, color=cores[1], lw=2, label="KL[q(z|x) || Pr(z)]")
-ax.set_title("Termos da -ELBO durante o treino")
+ax.set_title(f"Termos da loss durante o treino (β = {beta})")
 ax.set_xlabel("Época")
 ax.set_ylim(min(min(hist_recon), 0) - 0.5, 8)   # corta o pico das primeiras épocas
 ax.legend(frameon=False)
@@ -358,7 +365,7 @@ if gerar_gif:
         ax_l.spines[lado].set_color(tinta)
     ax_l.tick_params(colors=tinta, labelsize=9)
     ax_l.set_xlabel("passo (log)", color=tinta, fontsize=10)
-    ax_l.set_title("Evolução da Loss", color=tinta, fontsize=15, pad=24)
+    ax_l.set_title(f"Evolução da Loss  (β = {beta})", color=tinta, fontsize=15, pad=24)
     ax_l.text(0.55, 1.04, "$\\mathcal{L}_{KL}$", color=cores_gif[1], fontsize=14,
               transform=ax_l.transAxes)
     ax_l.text(0.80, 1.04, "$\\mathcal{L}_{recon}$", color=cores_gif[0], fontsize=14,
