@@ -161,32 +161,6 @@ def backward(params, cache):
 
 
 # =====================================================================
-# CHECAGEM DE GRADIENTE (diferenças finitas) — para confiar no backprop
-# =====================================================================
-def checar_gradientes(params, Xb, h=1e-5):
-    eps = np.random.randn(Xb.shape[0], D_z)     # ε fixo: assim a loss é determinística
-    _, _, _, cache = forward(params, Xb, eps)
-    g = backward(params, cache)
-
-    print("Checagem de gradiente (erro relativo, analítico vs numérico):")
-    for nome, P in params.items():
-        num = np.zeros_like(P)
-        for idx in np.ndindex(P.shape):
-            original = P[idx]
-            P[idx] = original + h
-            L_mais = forward(params, Xb, eps)[0]
-            P[idx] = original - h
-            L_menos = forward(params, Xb, eps)[0]
-            P[idx] = original
-            num[idx] = (L_mais - L_menos) / (2 * h)
-        erro = np.linalg.norm(g[nome] - num) / (np.linalg.norm(g[nome]) + np.linalg.norm(num) + 1e-12)
-        print(f"  {nome:5s}: {erro:.2e}")
-    print()
-
-checar_gradientes(params, X[:10])
-
-
-# =====================================================================
 # TREINAMENTO (Adam explícito, mini-batches)
 # =====================================================================
 beta1, beta2, adam_eps = 0.9, 0.999, 1e-8
